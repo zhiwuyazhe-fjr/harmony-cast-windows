@@ -4,7 +4,9 @@
 
 ## 启动
 
-双击项目目录里的 `启动投屏助手.vbs`，或运行 `dist/MirrorStage/MirrorStage.exe`。
+直接安装请前往 [GitHub Releases 下载 Windows 安装包](https://github.com/zhiwuyazhe-fjr/harmony-cast-windows/releases/latest)，安装后从桌面“肌智 JixFit 投屏”启动。
+
+在开发目录中，可双击 `启动投屏助手.vbs`，或运行构建后的 `dist/MirrorStage/MirrorStage.exe`。
 
 发行安装包位于 `release/JixFit-Cast-Setup-1.0.0-x64.exe`。将这个文件发给另一位使用者即可安装。安装包内置 Python、Qt、Java、HDC 和视频解码库，安装后从桌面快捷方式启动。目标平台为 Windows 10 1809 及以上的 x64 系统，已在当前 Windows 11 电脑验证。
 
