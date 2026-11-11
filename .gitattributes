@@ -1,0 +1,2 @@
+vendor/** -text
+vendor/hdc/NOTICE.txt -diff

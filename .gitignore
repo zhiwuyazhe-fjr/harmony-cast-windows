@@ -1,0 +1,10 @@
+.venv/
+.research/
+__pycache__/
+build/
+dist/
+logs/
+*.spec
+.packaging/
+release/
+bridge/out/
