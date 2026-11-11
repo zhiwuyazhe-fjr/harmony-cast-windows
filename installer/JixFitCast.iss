@@ -41,3 +41,46 @@ Name: "{autodesktop}\肌智 JixFit 投屏"; Filename: "{app}\MirrorStage.exe"; W
 
 [Run]
 Filename: "{app}\MirrorStage.exe"; Description: "启动肌智 JixFit 演示投屏"; Flags: nowait postinstall skipifsilent
+
+[Code]
+procedure StopOwnedHdc;
+var
+  Locator, Services, Processes, Process: Variant;
+  Index, ResultCode: Integer;
+  ExecutablePath, OwnedPath: String;
+begin
+  OwnedPath := ExpandConstant('{app}\_internal\vendor\hdc\hdc.exe');
+  try
+    Locator := CreateOleObject('WbemScripting.SWbemLocator');
+    Services := Locator.ConnectServer('.', 'root\CIMV2');
+    Processes := Services.ExecQuery('SELECT ExecutablePath, ProcessId FROM Win32_Process WHERE Name = ''hdc.exe''');
+    for Index := 0 to Processes.Count - 1 do
+    begin
+      Process := Processes.ItemIndex(Index);
+      if not VarIsNull(Process.ExecutablePath) then
+      begin
+        ExecutablePath := Process.ExecutablePath;
+        if CompareText(ExecutablePath, OwnedPath) = 0 then
+        begin
+          ResultCode := Process.Terminate(0);
+          Log(Format('Stopped bundled HDC, result %d', [ResultCode]));
+          Sleep(500);
+        end;
+      end;
+    end;
+  except
+    Log('Bundled HDC cleanup failed: ' + GetExceptionMessage);
+  end;
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+  if CurStep = ssInstall then
+    StopOwnedHdc;
+end;
+
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+begin
+  if CurUninstallStep = usUninstall then
+    StopOwnedHdc;
+end;
