@@ -13,19 +13,19 @@ def main():
     handler = RotatingFileHandler(DATA / "mirror.log", maxBytes=2_000_000, backupCount=2, encoding="utf-8")
     logging.basicConfig(level=logging.INFO, handlers=[handler], format="%(asctime)s %(levelname)s %(message)s")
     app = QApplication(sys.argv)
-    app.setApplicationName("MirrorStage")
-    app.setOrganizationName("MirrorStage")
+    app.setApplicationName("HarmonyCast")
+    app.setOrganizationName("HarmonyCast")
     app.setStyle("Fusion")
     # One owner per desktop session prevents competing capture services.
     socket = QLocalSocket()
-    socket.connectToServer("MirrorStage.Desktop")
+    socket.connectToServer("HarmonyCast.Desktop")
     if socket.waitForConnected(300):
         socket.write(b"show")
         socket.waitForBytesWritten(300)
         return 0
     server = QLocalServer()
-    server.removeServer("MirrorStage.Desktop")
-    if not server.listen("MirrorStage.Desktop"):
+    server.removeServer("HarmonyCast.Desktop")
+    if not server.listen("HarmonyCast.Desktop"):
         raise RuntimeError(server.errorString())
     window = MainWindow()
     def activate():

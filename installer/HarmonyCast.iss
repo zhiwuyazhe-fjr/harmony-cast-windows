@@ -1,12 +1,12 @@
 #define AppVersion "1.0.0"
-#define ProductName "肌智 JixFit 演示投屏"
+#define ProductName "鸿蒙手机连接助手"
 
 [Setup]
-AppId={{B92188A7-B762-4EEC-BF2B-94ADAF7426D8}
+AppId={{108A0F8B-AD65-4C98-9B41-62AF4647D012}
 AppName={#ProductName}
 AppVersion={#AppVersion}
-AppPublisher=肌智 JixFit
-DefaultDirName={localappdata}\Programs\JixFitCast
+AppPublisher=HarmonyCast
+DefaultDirName={localappdata}\Programs\HarmonyCast
 DefaultGroupName={#ProductName}
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
@@ -14,9 +14,9 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 MinVersion=10.0.17763
 OutputDir=..\release
-OutputBaseFilename=JixFit-Cast-Setup-{#AppVersion}-x64
-SetupIconFile=app.ico
-UninstallDisplayIcon={app}\MirrorStage.exe
+OutputBaseFilename=HarmonyCast-Setup-{#AppVersion}-x64
+SetupIconFile=harmony-cast.ico
+UninstallDisplayIcon={app}\HarmonyCast.exe
 UninstallDisplayName={#ProductName}
 WizardStyle=modern
 Compression=lzma2
@@ -32,15 +32,15 @@ Name: "chinesesimp"; MessagesFile: "compiler:Languages\ChineseSimplified.isl"
 Name: "desktopicon"; Description: "创建桌面快捷方式"; GroupDescription: "快捷方式"
 
 [Files]
-Source: "..\dist\MirrorStage\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\dist\HarmonyCast\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "quick-start.txt"; DestDir: "{app}"; DestName: "使用说明.txt"; Flags: ignoreversion
 
 [Icons]
-Name: "{group}\{#ProductName}"; Filename: "{app}\MirrorStage.exe"; WorkingDir: "{app}"
-Name: "{autodesktop}\肌智 JixFit 投屏"; Filename: "{app}\MirrorStage.exe"; WorkingDir: "{app}"; Tasks: desktopicon
+Name: "{group}\{#ProductName}"; Filename: "{app}\HarmonyCast.exe"; WorkingDir: "{app}"
+Name: "{autodesktop}\{#ProductName}"; Filename: "{app}\HarmonyCast.exe"; WorkingDir: "{app}"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\MirrorStage.exe"; Description: "启动肌智 JixFit 演示投屏"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\HarmonyCast.exe"; Description: "启动{#ProductName}"; Flags: nowait postinstall skipifsilent
 
 [Code]
 procedure StopOwnedHdc;

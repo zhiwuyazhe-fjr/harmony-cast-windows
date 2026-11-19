@@ -45,7 +45,3 @@ PyAV 以 BSD-3-Clause 发布，底层视频解码使用其发行包随附的 FFm
 
 - 发行与对应源代码 https://github.com/adoptium/temurin21-binaries/releases/tag/jdk-21.0.13%2B9
 - 项目 https://adoptium.net/
-
-## 界面文案图形
-
-确认后的“越练，越懂你”和副标题由 `scripts/render_brand_copy.py` 渲染为透明 PNG，作为固定界面图形随包提供。运行时直接显示这些图形。

@@ -20,7 +20,7 @@ from PySide6.QtCore import QThread, Signal
 from PySide6.QtGui import QImage
 
 ROOT = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent.parent))
-DATA = Path(os.environ.get("LOCALAPPDATA", str(ROOT))) / "MirrorStage"
+DATA = Path(os.environ.get("LOCALAPPDATA", str(ROOT))) / "HarmonyCast"
 DATA.mkdir(parents=True, exist_ok=True)
 LOG = logging.getLogger("mirror")
 HIDDEN = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
@@ -63,16 +63,23 @@ def hdc(*args: str, timeout: float = 8) -> str:
     return output
 
 
-def devices() -> list[dict]:
-    rows = hdc("list", "targets", "-v")
-    found = []
-    for line in rows.splitlines():
+def connected_targets() -> dict[str, str]:
+    targets = {}
+    for line in hdc("list", "targets", "-v", timeout=4).splitlines():
         fields = line.split()
-        if len(fields) < 3 or fields[2].lower() != "connected":
-            continue
-        serial, transport = fields[:2]
-        name = hdc("-t", serial, "shell", "param", "get", "const.product.name").strip()
-        found.append({"serial": serial, "name": name or serial, "wireless": transport.upper() == "TCP"})
+        if len(fields) >= 3 and fields[2].lower() == "connected":
+            targets[fields[0]] = fields[1].upper()
+    return targets
+
+
+def devices() -> list[dict]:
+    found = []
+    for serial, transport in connected_targets().items():
+        try:
+            name = hdc("-t", serial, "shell", "param", "get", "const.product.name").strip()
+        except (subprocess.TimeoutExpired, RuntimeError):
+            name = ""
+        found.append({"serial": serial, "name": name or serial, "wireless": transport == "TCP"})
     return found
 
 
@@ -80,19 +87,32 @@ def validate_endpoint(value: str) -> str:
     host, separator, port = value.strip().rpartition(":")
     if not separator or not port.isdecimal() or not 1 <= int(port) <= 65535:
         raise ValueError("请输入手机无线调试页中的 IP:端口，例如 192.168.1.8:5555。")
-    ipaddress.IPv4Address(host)
+    try:
+        ipaddress.IPv4Address(host)
+    except ipaddress.AddressValueError as error:
+        raise ValueError("手机 IPv4 地址格式有误，请按无线调试页上的 IP:端口填写。") from error
     return f"{host}:{int(port)}"
 
 
-def connect_wifi(endpoint: str) -> str:
+def connect_wifi(endpoint: str, stop: threading.Event) -> str:
     endpoint = validate_endpoint(endpoint)
+    if connected_targets().get(endpoint) == "TCP":
+        return endpoint
     try:
-        output = hdc("tconn", endpoint, timeout=15)
-    except subprocess.TimeoutExpired as error:
-        raise RuntimeError("无线连接超时。请打开手机无线调试，确认同一 Wi-Fi，并使用手机显示的端口。") from error
-    if "Connect OK" not in output and "already" not in output.lower():
-        raise RuntimeError(output or "无线连接失败，请核对手机上的地址和端口。")
-    return endpoint
+        output = hdc("tconn", endpoint, timeout=10)
+    except (RuntimeError, subprocess.TimeoutExpired) as error:
+        output = str(error)
+    # HDC can return before authorization and can report an already-open connection.
+    # Only the exact TCP target appearing as Connected is ready for the SDK.
+    deadline = time.monotonic() + 12
+    while not stop.is_set():
+        if connected_targets().get(endpoint) == "TCP":
+            return endpoint
+        if "[fail]" in output.lower() or time.monotonic() >= deadline:
+            LOG.warning("Wireless target %s unavailable: %s", endpoint, output)
+            raise RuntimeError(f"无法连接 {endpoint}。请确认手机已允许无线调试、端口正确且同一局域网可互访。使用代理或 VPN 时，请让手机 IP 直连。")
+        stop.wait(0.4)
+    raise InterruptedError()
 
 
 def prepare_wifi(serial: str) -> str:
@@ -126,9 +146,10 @@ class CastWorker(QThread):
     status = Signal(str)
     failed = Signal(str)
 
-    def __init__(self, serial: str, preset: str, parent=None):
+    def __init__(self, serial: str, preset: str, parent=None, *, wireless=False):
         super().__init__(parent)
         self.serial = serial
+        self.wireless = wireless
         self.preset = preset
         self.stop_event = threading.Event()
         self.lock = threading.Lock()
@@ -208,8 +229,14 @@ class CastWorker(QThread):
         return rules
 
     def run(self):
-        before = self._forward_rules()
+        before = None
         try:
+            if self.wireless:
+                self.status.emit("正在连接无线设备…")
+                connect_wifi(self.serial, self.stop_event)
+            if self.stop_event.is_set():
+                return
+            before = self._forward_rules()
             self.status.emit("正在建立视频连接…")
             scale, fps, bitrate = PRESETS[self.preset]
             token = secrets.token_hex(24)
@@ -236,7 +263,7 @@ class CastWorker(QThread):
             if self.stop_event.is_set():
                 return
             if port is None:
-                raise RuntimeError("投屏服务启动失败。请确认手机已允许 USB 调试授权，日志中有详细原因。")
+                raise RuntimeError("投屏服务启动失败。请确认手机已解锁并允许调试，日志中有详细原因。")
             self.socket = socket.create_connection(("127.0.0.1", port), timeout=8)
             self.socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
             self.socket.settimeout(0.5)
@@ -299,7 +326,8 @@ class CastWorker(QThread):
                     self.process.wait(timeout=3)
                 self.process.stdout.close()
             # Remove only this session's newly created capture forwarding entries.
-            for local, remote in self._forward_rules() - before:
+            owned_rules = self._forward_rules() - before if before is not None else set()
+            for local, remote in owned_rules:
                 try:
                     hdc("-t", self.serial, "fport", "rm", local, remote, timeout=3)
                 except Exception:
